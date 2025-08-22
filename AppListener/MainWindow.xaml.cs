@@ -1,17 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 using ChartIQ.Finsemble;
 using Microsoft.IdentityModel.Tokens;
 using ChartIQ.Finsemble.Events;
@@ -28,9 +16,11 @@ namespace AppListener
     public partial class MainWindow : Window
     {
 
+        // Constants for query and listen
         const string queryResponderChannel = "FIN-2264.responder";
         const string listenerChannel = "FIN-2264.listener";
 
+        // The JWK to be used for static auth
         private JsonWebKey JWK = new JsonWebKey()
         {
             D = "S7msrBKYM_VhXmAWTLhoRobLTevToYbX3xkbkN-EiaZ6Hg-xfozn5uAQGnBnoP1ldKOgoj5Z3dx6kTgR-3xfonEfdkk6wn0OVNbuFYyGkeeV4ts5JmyVpihFqE3RbkWuQ5D5xpIhXWl1fOWEuFfGCYIib2pmBUyc4Lz4OYmMOIGEC9nJg6ZuoKOh0nDZBjjO6vbYbXCEi0ys-FD7NAWsM8jTNDxLyXmpCNSVJOnGTX9CcxnFGdLVO8fqbooaydSHtFJE9YVqUKWp54hOBFMHdsTY5iT88urrvdBLxtGf6NGUVetpw-nFiOihDRPb9wMuLY9CT4DDzLecxadrLKh0PQ",
@@ -42,16 +32,24 @@ namespace AppListener
             Q = "4R0RUlCnmZRzEw9sqjwxMuvNM1BTSubvMvG0VIlBkYbCn9MOdwurBPxrYqnUcbw-q-qzQy6st6a4L-EAZSnfD3FEEFKeINOJK06l0EwjcLeP8B4YQ-bxd9UroXpl9ACiMqHzyvJCNOpw8A22nbjKVnVhW1E17F-LFAJoWBetYA0",
             QI = "PODgpJrXxPAp72v_O0fNfAhWjHLeTk9TfLARl9lzPpYIoYR5tgP1Y_A-3feH_xtCfkzcCskfXIerQlY9lVmqs-eGEYjfuuPVYIruN4OsskMY1nz-h_14clyUmUwfCQJDV4qjcAzf80IMu53jYEW1BydRf90snRjk1dYgSq_qtTQ",
         };
+
+        // The Finsemble connection
         private Finsemble FSBL;
 
         public MainWindow()
         {
             this.Closing += MainWindow_Closing;
+
+            // Create the Finsemble object (use the command line arguments, if present)
             FSBL = new Finsemble(App.args, this);
             FSBL.Connected += FSBL_Connected;
             FSBL.Connect("WPF_POC", JWK);
         }
 
+        /// <summary>
+        /// Creates a QueryResponder instance. This will remove itself after each connection and create a new responder.
+        /// </summary>
+        /// <returns>a QueryResponder which will remove and add itself after each response</returns>
         private EventHandler<ChartIQ.Finsemble.Router.FinsembleQueryArgs> createQueryResponder() {
             return (err, args) =>
             {
@@ -66,11 +64,12 @@ namespace AppListener
                 },
                 null));
 
+                // TODO: Comment this out to prevent remove/add functionality
                 // Remove the responder
                 FSBL.RouterClient.RemoveResponder(queryResponderChannel);
                 Trace.TraceError("responder removed");
                 FSBL.Logger.System.Log(new JToken[] { "responder removed" });
-
+                //
                 // Add a new responder
                 FSBL.RouterClient.AddResponder(queryResponderChannel, createQueryResponder());
                 Trace.TraceError("responder added");
@@ -78,6 +77,10 @@ namespace AppListener
             };
         }
 
+        /// <summary>
+        /// Creates a listener instance which will remove and re-add itself after each invocation
+        /// </summary>
+        /// <returns>a Listener which will remove and add itself after each message</returns>
         private EventHandler<ChartIQ.Finsemble.Router.FinsembleEventArgs> createListenerHandler()
         {
             EventHandler<ChartIQ.Finsemble.Router.FinsembleEventArgs> listener = (err, args) => {
@@ -85,15 +88,24 @@ namespace AppListener
             };
             return listener;
         }
+        /// <summary>
+        /// Wraps a listener handler such that it will be removed and re-added after each listen event
+        /// </summary>
+        /// <param name="channel">the channel to listen to</param>
+        /// <param name="listener">the listener implementation to wrap</param>
+        /// <returns></returns>
         private EventHandler<ChartIQ.Finsemble.Router.FinsembleEventArgs> wrapListenerHandler(string channel, EventHandler<ChartIQ.Finsemble.Router.FinsembleEventArgs> listener)
         {
             EventHandler<ChartIQ.Finsemble.Router.FinsembleEventArgs> wrappedListener = null;
             wrappedListener = (err, args) => {
                 listener(err, args);
+
+                // TODO: Comment this out to prevent remove/add functionality
+                // Remove the listener
                 FSBL.RouterClient.RemoveListener(channel, wrappedListener);
                 Trace.TraceError("listener removed");
                 FSBL.Logger.System.Log(new JToken[] { "listener removed" });
-
+                //
                 // Add a new listener
                 FSBL.RouterClient.AddListener(channel, wrapListenerHandler(channel, listener));
                 Trace.TraceError("listener added");

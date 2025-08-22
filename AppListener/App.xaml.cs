@@ -16,24 +16,19 @@ namespace AppListener
 
 		public App()
         {
+			// Log the start
 			Trace.TraceInformation("App started");
 		}
 
 		protected override void OnStartup(StartupEventArgs e)
 		{
 			args = e.Args;
-//#if DEBUG
-//			Debugger.Launch();
-//#endif
-
-//#if LOGGING && TRACE
 			TextWriterTraceListener logger = new TextWriterTraceListener("Finsemble.log");
 			logger.TraceOutputOptions = TraceOptions.DateTime;
 
 			Trace.Listeners.Add(logger);
 			Trace.AutoFlush = true;
 			Trace.TraceInformation("Logging started");
-//#endif
 		}
 
 		private void Application_DispatcherUnhandledException(object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
